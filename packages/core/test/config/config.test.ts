@@ -76,6 +76,62 @@ describe("Config", () => {
     }),
   )
 
+  for (const enabled of [true, false, undefined]) {
+    it.effect(`decodes and migrates names-only ${enabled} without changing absence or explicit false`, () =>
+      Effect.sync(() => {
+        const legacy = enabled === undefined ? {} : { skill_index_names_only: enabled }
+        const current = enabled === undefined ? {} : { skillIndexNamesOnly: enabled }
+        expect(Schema.decodeUnknownSync(Config.Info)({ experimental: current }).experimental).toMatchObject(current)
+        const decoded = Schema.decodeUnknownSync(ConfigV1.Info)({ experimental: legacy })
+        expect(decoded.experimental?.skill_index_names_only).toBe(enabled)
+        expect(ConfigMigrateV1.isV1({ experimental: legacy })).toBe(enabled !== undefined)
+        expect(ConfigMigrateV1.isV1({ experimental: current })).toBe(false)
+        const migrated = Schema.decodeUnknownSync(Config.Info)(ConfigMigrateV1.migrate(decoded))
+        expect(migrated.experimental?.skillIndexNamesOnly).toBe(enabled)
+        if (enabled === undefined) expect(migrated.experimental).toBeUndefined()
+        const policies = Schema.decodeUnknownSync(Config.Info)(
+          ConfigMigrateV1.migrate({ experimental: { ...legacy, policies: [] } }),
+        )
+        expect(policies.experimental?.policies).toEqual([])
+        expect(policies.experimental?.skillIndexNamesOnly).toBe(enabled)
+        if (enabled === undefined) expect(Object.hasOwn(policies.experimental!, "skillIndexNamesOnly")).toBe(false)
+      }),
+    )
+  }
+
+  it.live("loads a standalone legacy names-only false override after a v2 true document", () =>
+    Effect.acquireRelease(
+      Effect.promise(() => tmpdir()),
+      (tmp) => Effect.promise(() => tmp[Symbol.asyncDispose]()),
+    ).pipe(
+      Effect.flatMap((tmp) =>
+        Effect.gen(function* () {
+          yield* Effect.promise(() =>
+            Promise.all([
+              fs.writeFile(
+                path.join(tmp.path, "opencode.json"),
+                JSON.stringify({
+                  experimental: { skillIndexNamesOnly: true },
+                }),
+              ),
+              fs.writeFile(
+                path.join(tmp.path, "opencode.jsonc"),
+                JSON.stringify({
+                  experimental: { skill_index_names_only: false },
+                }),
+              ),
+            ]),
+          )
+          yield* Effect.gen(function* () {
+            const config = yield* Config.Service
+            const documents = (yield* config.entries()).filter((entry) => entry.type === "document")
+            expect(documents.map((entry) => entry.info.experimental?.skillIndexNamesOnly)).toEqual([true, false])
+          }).pipe(Effect.provide(testLayer(tmp.path)))
+        }),
+      ),
+    ),
+  )
+
   it.effect("migrates arbitrary v1 configuration into valid v2 configuration", () =>
     Effect.sync(() => {
       FastCheck.assert(

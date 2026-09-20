@@ -136,10 +136,10 @@ export const Info = Schema.Struct({
   tool_output: Schema.optional(
     Schema.Struct({
       max_lines: Schema.optional(PositiveInt).annotate({
-        description: "Maximum lines of tool output before it is truncated and saved to disk (default: 2000)",
+        description: "Maximum lines of tool output before it is truncated and saved to disk (default: 500)",
       }),
       max_bytes: Schema.optional(PositiveInt).annotate({
-        description: "Maximum bytes of tool output before it is truncated and saved to disk (default: 51200)",
+        description: "Maximum bytes of tool output before it is truncated and saved to disk (default: 16384)",
       }),
     }),
   ).annotate({
@@ -184,6 +184,10 @@ export const Info = Schema.Struct({
       }),
       policies: Schema.optional(Schema.mutable(Schema.Array(ConfigExperimental.Policy))).annotate({
         description: "Policy statements applied to supported resources, such as provider access",
+      }),
+      skill_index_names_only: Schema.optional(Schema.Boolean).annotate({
+        description:
+          "Inject only skill names into the system prompt; full instructions load via the skill tool. Reduces per-request token usage when many skills are installed.",
       }),
     }),
   ),

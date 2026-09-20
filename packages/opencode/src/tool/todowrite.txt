@@ -16,29 +16,10 @@ Skip when:
 - Tracking adds no organizational value
 
 ## States
-- `pending` - not started
-- `in_progress` - actively working (exactly ONE at a time)
-- `completed` - finished successfully
-- `cancelled` - no longer needed
+- `pending`, `in_progress` (exactly ONE at a time), `completed`, `cancelled`
 
 ## Rules
-- Update status in real time; don't batch completions
-- Mark `completed` only after the required work is actually done, including any required verification. Never based on intent.
-- Keep exactly one `in_progress` while work remains
-- If blocked or partial, keep it `in_progress` and add a follow-up todo describing the blocker
-- Preserve user-provided commands verbatim (flags, args, order)
-- Items should be specific and actionable; break large work into smaller steps
-
-## Examples
-
-Use it:
-- "Add a dark mode toggle and run the tests" -> multi-step feature + explicit verification
-- "Rename getCwd -> getCurrentWorkingDirectory across the repo" -> grep reveals 15 occurrences in 8 files
-- "Implement registration, catalog, cart, checkout" -> multiple complex features
-
-Skip it:
-- "How do I print Hello World in Python?" -> informational
-- "Add a comment to calculateTotal" -> single edit
-- "Run npm install and tell me what happened" -> one command
-
-When in doubt, use it.
+- Update status in real time; don't batch completions.
+- Mark `completed` only after the work is done and verified, never on intent.
+- If blocked, keep it `in_progress` and add a follow-up todo.
+- Preserve user-provided commands verbatim (flags, args, order).

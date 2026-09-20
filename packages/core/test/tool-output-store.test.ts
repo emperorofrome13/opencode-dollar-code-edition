@@ -134,7 +134,7 @@ describe("ToolOutputStore", () => {
   it.live("does not double-count structured data duplicated in projected text", () =>
     withStore(({ store }) =>
       Effect.gen(function* () {
-        const text = "x".repeat(30_000)
+        const text = "x".repeat(ToolOutputStore.MAX_BYTES)
         const output = { structured: { output: text }, content: [{ type: "text" as const, text }] }
         expect(yield* store.bound({ sessionID, toolCallID: "call-duplicated", output })).toEqual({
           output,
@@ -222,6 +222,88 @@ describe("ToolOutputStore", () => {
           expect(result.outputPaths).toHaveLength(1)
         }),
       new Config.Info({ tool_output: new ConfigToolOutput.Info({ max_lines: 2, max_bytes: 1_000 }) }),
+    ),
+  )
+
+  it.live("falls back to 500 lines and 16 KiB without config", () =>
+    withStore(({ store, fs }) =>
+      Effect.gen(function* () {
+        expect(yield* store.limits()).toEqual({ maxLines: 500, maxBytes: 16 * 1024 })
+        const text = Array.from({ length: 500 }, () => "line").join("\n")
+        const output = { structured: {}, content: [{ type: "text" as const, text }] }
+        expect(yield* store.bound({ sessionID, toolCallID: "call-line-limit", output })).toEqual({
+          output,
+          outputPaths: [],
+        })
+        const result = yield* store.bound({
+          sessionID,
+          toolCallID: "call-over-line-limit",
+          output: { structured: {}, content: [{ type: "text", text: text + "\nline" }] },
+        })
+        expect(result.outputPaths).toHaveLength(1)
+        expect(yield* fs.readFileString(result.outputPaths[0])).toBe(text + "\nline")
+        if (result.output.content[0]?.type !== "text") throw new Error("expected text preview")
+        expect(result.output.content[0].text.split("\n").length).toBeLessThanOrEqual(500)
+      }),
+    ),
+  )
+
+  it.live("keeps output at the exact byte boundary and truncates one byte over", () =>
+    withStore(({ store }) =>
+      Effect.gen(function* () {
+        const exact = "x".repeat(ToolOutputStore.MAX_BYTES)
+        const atLimit = yield* store.bound({
+          sessionID,
+          toolCallID: "call-at-limit",
+          output: { structured: {}, content: [{ type: "text", text: exact }] },
+        })
+        expect(atLimit.outputPaths).toEqual([])
+        expect(atLimit.output.content).toEqual([{ type: "text", text: exact }])
+
+        const over = yield* store.bound({
+          sessionID,
+          toolCallID: "call-over-limit",
+          output: { structured: {}, content: [{ type: "text", text: exact + "!" }] },
+        })
+        expect(over.outputPaths).toHaveLength(1)
+      }),
+    ),
+  )
+
+  it.live("recovers full oversized unicode output from disk without splitting code points", () =>
+    withStore(({ store, fs }) =>
+      Effect.gen(function* () {
+        const text = "\u{1F680}".repeat(6_000)
+        const result = yield* store.bound({
+          sessionID,
+          toolCallID: "call-unicode",
+          output: { structured: {}, content: [{ type: "text", text }] },
+        })
+        expect(result.outputPaths).toHaveLength(1)
+        expect(yield* fs.readFileString(result.outputPaths[0])).toBe(text)
+        if (result.output.content[0]?.type !== "text") throw new Error("expected text preview")
+        expect(Buffer.byteLength(result.output.content[0].text, "utf-8")).toBeLessThanOrEqual(ToolOutputStore.MAX_BYTES)
+        expect(result.output.content[0].text).toContain("\u{1F680}")
+        expect(Buffer.from(result.output.content[0].text).toString("utf-8")).toBe(result.output.content[0].text)
+      }),
+    ),
+  )
+
+  it.live("honors explicit overrides larger than the new defaults", () =>
+    withStore(
+      ({ store }) =>
+        Effect.gen(function* () {
+          expect(yield* store.limits()).toEqual({ maxLines: 2_000, maxBytes: 50 * 1024 })
+          const text = Array.from({ length: 600 }, () => "x".repeat(40)).join("\n")
+          const result = yield* store.bound({
+            sessionID,
+            toolCallID: "call-large-override",
+            output: { structured: {}, content: [{ type: "text", text }] },
+          })
+          expect(result.outputPaths).toEqual([])
+          expect(result.output.content).toEqual([{ type: "text", text }])
+        }),
+      new Config.Info({ tool_output: new ConfigToolOutput.Info({ max_lines: 2_000, max_bytes: 50 * 1024 }) }),
     ),
   )
 

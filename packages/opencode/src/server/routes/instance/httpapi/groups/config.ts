@@ -1,4 +1,5 @@
-import { Config } from "@/config/config"
+import { ContextSettings } from "@/config/context-settings"
+import { InvalidRequestError } from "../errors"
 import { ConfigV1 } from "@opencode-ai/core/v1/config/config"
 import { Provider } from "@/provider/provider"
 import { HttpApi, HttpApiEndpoint, HttpApiError, HttpApiGroup, OpenApi } from "effect/unstable/httpapi"
@@ -35,6 +36,23 @@ export const ConfigApi = HttpApi.make("config")
             description: "Update OpenCode configuration settings and preferences.",
           }),
         ),
+        HttpApiEndpoint.get("contextSettings", `${root}/context-settings`, {
+          query: WorkspaceRoutingQuery,
+          success: ContextSettings.Status,
+          error: InvalidRequestError,
+        }).annotateMerge(OpenApi.annotations({
+          identifier: "config.contextSettings",
+          summary: "Get project context settings",
+        })),
+        HttpApiEndpoint.patch("updateContextSettings", `${root}/context-settings`, {
+          query: WorkspaceRoutingQuery,
+          payload: ContextSettings.Patch,
+          success: ContextSettings.Status,
+          error: InvalidRequestError,
+        }).annotateMerge(OpenApi.annotations({
+          identifier: "config.updateContextSettings",
+          summary: "Persist project context settings; restart required",
+        })),
         HttpApiEndpoint.get("providers", `${root}/providers`, {
           query: WorkspaceRoutingQuery,
           success: described(Provider.ConfigProvidersResult, "List of providers"),

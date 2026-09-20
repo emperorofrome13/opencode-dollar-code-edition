@@ -101,8 +101,8 @@ describe("Truncate", () => {
     )
 
     test("uses default MAX_LINES and MAX_BYTES", () => {
-      expect(Truncate.MAX_LINES).toBe(2000)
-      expect(Truncate.MAX_BYTES).toBe(50 * 1024)
+      expect(Truncate.MAX_LINES).toBe(500)
+      expect(Truncate.MAX_BYTES).toBe(16 * 1024)
     })
 
     it.live("limits() falls back to MAX_LINES/MAX_BYTES when Config is not provided", () =>
@@ -111,6 +111,14 @@ describe("Truncate", () => {
         const resolved = yield* svc.limits()
         expect(resolved.maxLines).toBe(Truncate.MAX_LINES)
         expect(resolved.maxBytes).toBe(Truncate.MAX_BYTES)
+        const content = Array.from({ length: 500 }, () => "line").join("\n")
+        expect(yield* svc.output(content)).toEqual({ content, truncated: false })
+        const result = yield* svc.output(content + "\nline")
+        expect(result.truncated).toBe(true)
+        if (!result.truncated) throw new Error("expected truncated")
+        expect(result.content).toContain("...1 lines truncated...")
+        const fsys = yield* FSUtil.Service
+        expect(yield* fsys.readFileString(result.outputPath)).toBe(content + "\nline")
       }),
     )
 
@@ -150,12 +158,57 @@ describe("Truncate", () => {
       const overrideIt = configuredIt({ tool_output: { max_lines: 10, max_bytes: 100 } })
       overrideIt.live("per-call options still override config", () =>
         Effect.gen(function* () {
-          const content = Array.from({ length: 50 }, (_, i) => `line${i}`).join("\n")
-          const result = yield* (yield* Truncate.Service).output(content, {
+          const svc = yield* Truncate.Service
+          const content = Array.from({ length: 600 }, () => "x".repeat(40)).join("\n")
+          const result = yield* svc.output(content, {
             maxLines: 1000,
             maxBytes: 1024 * 1024,
           })
           expect(result.truncated).toBe(false)
+        }),
+      )
+
+      const largeOverrideIt = configuredIt({ tool_output: { max_lines: 2_000, max_bytes: 50 * 1024 } })
+      largeOverrideIt.live("config overrides preserve output exceeding both defaults", () =>
+        Effect.gen(function* () {
+          const svc = yield* Truncate.Service
+          const resolved = yield* svc.limits()
+          expect(resolved.maxLines).toBe(2_000)
+          expect(resolved.maxBytes).toBe(50 * 1024)
+          const content = Array.from({ length: 600 }, () => "x".repeat(40)).join("\n")
+          const result = yield* svc.output(content)
+          expect(result.truncated).toBe(false)
+          expect(result.content).toBe(content)
+        }),
+      )
+
+      it.live("keeps output at the exact byte boundary and truncates one byte over", () =>
+        Effect.gen(function* () {
+          const svc = yield* Truncate.Service
+          const exact = "x".repeat(Truncate.MAX_BYTES)
+          const atLimit = yield* svc.output(exact)
+          expect(atLimit.truncated).toBe(false)
+          expect(atLimit.content).toBe(exact)
+
+          const over = yield* svc.output(exact + "!")
+          expect(over.truncated).toBe(true)
+          if (!over.truncated) throw new Error("expected truncated")
+          const fsys = yield* FSUtil.Service
+          expect(yield* fsys.readFileString(over.outputPath)).toBe(exact + "!")
+        }),
+      )
+
+      it.live("recovers full oversized unicode output from disk without splitting code points", () =>
+        Effect.gen(function* () {
+          const svc = yield* Truncate.Service
+          const text = "\u{1F680}".repeat(6_000)
+          const result = yield* svc.output(text)
+          expect(result.truncated).toBe(true)
+          if (!result.truncated) throw new Error("expected truncated")
+          const fsys = yield* FSUtil.Service
+          expect(yield* fsys.readFileString(result.outputPath)).toBe(text)
+          expect(result.content).toContain("truncated...")
+          expect(Buffer.byteLength(result.content, "utf-8")).toBeLessThanOrEqual(Truncate.MAX_BYTES)
         }),
       )
     })
@@ -164,7 +217,7 @@ describe("Truncate", () => {
       Effect.gen(function* () {
         const svc = yield* Truncate.Service
         const fsys = yield* FSUtil.Service
-        const content = yield* fsys.readFileString(path.join(FIXTURES_DIR, "models-api.json"))
+        const content = JSON.stringify(JSON.parse(yield* fsys.readFileString(path.join(FIXTURES_DIR, "models-api.json"))))
         const result = yield* svc.output(content)
 
         expect(result.truncated).toBe(true)

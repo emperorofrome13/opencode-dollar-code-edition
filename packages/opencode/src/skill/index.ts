@@ -318,9 +318,15 @@ const layer = Layer.effect(
   }),
 )
 
-export function fmt(list: Info[], opts: { verbose: boolean }) {
+export function fmt(list: Info[], opts: { verbose: boolean; namesOnly?: boolean }) {
   const described = list.filter((skill) => skill.description !== undefined)
   if (described.length === 0) return "No skills are currently available."
+  if (opts.namesOnly) {
+    return described
+      .toSorted((a, b) => a.name.localeCompare(b.name))
+      .map((skill) => `- ${skill.name}`)
+      .join("\n")
+  }
   if (opts.verbose) {
     return [
       "<available_skills>",

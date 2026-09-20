@@ -29,7 +29,13 @@ const keys = new Set([
 
 export function isV1(input: unknown) {
   if (typeof input !== "object" || input === null || Array.isArray(input)) return false
-  return Object.keys(input).some((key) => keys.has(key))
+  return (
+    Object.keys(input).some((key) => keys.has(key)) ||
+    ("experimental" in input &&
+      typeof input.experimental === "object" &&
+      input.experimental !== null &&
+      "skill_index_names_only" in input.experimental)
+  )
 }
 
 export function migrate(info: typeof ConfigV1.Info.Type) {
@@ -66,7 +72,15 @@ export function migrate(info: typeof ConfigV1.Info.Type) {
     plugins: info.plugin?.map((plugin) =>
       typeof plugin === "string" ? plugin : { package: plugin[0], options: plugin[1] },
     ),
-    experimental: info.experimental?.policies && { policies: info.experimental.policies },
+    experimental:
+      info.experimental?.policies !== undefined || info.experimental?.skill_index_names_only !== undefined
+        ? {
+            ...(info.experimental.policies !== undefined && { policies: info.experimental.policies }),
+            ...(info.experimental.skill_index_names_only !== undefined && {
+              skillIndexNamesOnly: info.experimental.skill_index_names_only,
+            }),
+          }
+        : undefined,
     providers: providers(info.provider),
   }
 }

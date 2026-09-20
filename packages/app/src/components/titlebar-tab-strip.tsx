@@ -4,7 +4,7 @@ import { createResizeObserver } from "@solid-primitives/resize-observer"
 import { DragDropProvider, PointerSensor } from "@dnd-kit/solid"
 import { isSortable, useSortable } from "@dnd-kit/solid/sortable"
 import { Accessibility, AutoScroller, Feedback, PointerActivationConstraints } from "@dnd-kit/dom"
-import { RestrictToHorizontalAxis } from "@dnd-kit/abstract/modifiers"
+import { RestrictToHorizontalAxis, RestrictToVerticalAxis } from "@dnd-kit/abstract/modifiers"
 import { RestrictToElement } from "@dnd-kit/dom/modifiers"
 import { arrayMove } from "@dnd-kit/helpers"
 import { tabHref, tabKey, type SessionTab, type Tab } from "@/context/tabs"
@@ -32,6 +32,7 @@ function SessionTabSlot(props: {
   onRename: (title: string) => Promise<void>
   onNavigate: (element: HTMLDivElement) => void
   onClose: () => void
+  vertical?: boolean
 }) {
   const sortable = useSortable({
     get id() {
@@ -49,7 +50,11 @@ function SessionTabSlot(props: {
       data-titlebar-tab-slot
       data-tab-key={props.id}
       data-active={props.active()}
-      class="relative flex w-56 min-w-7 max-w-56 flex-shrink"
+      classList={{
+        "w-56 min-w-7 max-w-56 flex-shrink": !props.vertical,
+        "w-full min-w-0 max-w-none flex-shrink-0": props.vertical,
+      }}
+      class="relative flex"
     >
       <TabNavItem
         ref={(el) => {
@@ -80,6 +85,7 @@ function SessionTabEntry(props: {
   onVisibleChange: (visible: boolean) => void
   onNavigate: (element: HTMLDivElement) => void
   onClose: () => void
+  vertical?: boolean
 }) {
   const tabs = useTabs()
   const language = useLanguage()
@@ -162,6 +168,7 @@ function SessionTabEntry(props: {
         onRename={rename}
         onNavigate={props.onNavigate}
         onClose={props.onClose}
+        vertical={props.vertical}
       />
     </Show>
   )
@@ -175,6 +182,7 @@ function DraftTabSlot(props: {
   title: string
   onNavigate: (element: HTMLDivElement) => void
   onClose: () => void
+  vertical?: boolean
 }) {
   const sortable = useSortable({
     get id() {
@@ -192,7 +200,11 @@ function DraftTabSlot(props: {
       data-titlebar-tab-slot
       data-tab-key={props.id}
       data-active={props.active()}
-      class="relative flex w-56 min-w-7 max-w-56 flex-shrink"
+      classList={{
+        "w-56 min-w-7 max-w-56 flex-shrink": !props.vertical,
+        "w-full min-w-0 max-w-none flex-shrink-0": props.vertical,
+      }}
+      class="relative flex"
     >
       <DraftTabItem
         ref={(el) => {
@@ -217,10 +229,12 @@ export function TitlebarTabStrip(props: {
   onClose: (tab: Tab) => void
   onReorder: (keys: string[]) => void
   onOverflowChange: (overflowing: boolean) => void
+  orientation?: "horizontal" | "vertical"
 }) {
   const global = useGlobal()
   const language = useLanguage()
   const command = useCommand()
+  const vertical = () => props.orientation === "vertical"
   let scrollRef!: HTMLDivElement
   let listRef!: HTMLDivElement
   let resizeFrame: number | undefined
@@ -256,7 +270,9 @@ export function TitlebarTabStrip(props: {
 
   function refreshOverflow() {
     if (!scrollRef) return
-    props.onOverflowChange(scrollRef.scrollWidth > scrollRef.clientWidth)
+    props.onOverflowChange(
+      vertical() ? scrollRef.scrollHeight > scrollRef.clientHeight : scrollRef.scrollWidth > scrollRef.clientWidth,
+    )
   }
 
   createResizeObserver(
@@ -285,11 +301,20 @@ export function TitlebarTabStrip(props: {
   })
 
   return (
-    <div data-slot="titlebar-tabs" class="relative min-w-0">
+    <div
+      data-slot="titlebar-tabs"
+      data-orientation={vertical() ? "vertical" : "horizontal"}
+      classList={{ "relative min-w-0": !vertical(), "relative min-h-0 w-full flex-1": vertical() }}
+    >
       <div
         data-slot="titlebar-tabs-scroll"
-        class="flex min-w-0 flex-row items-center gap-1.5 overflow-x-auto no-scrollbar [app-region:no-drag]"
         ref={scrollRef}
+        classList={{
+          "flex min-w-0 flex-row items-center gap-1.5 overflow-x-auto no-scrollbar [app-region:no-drag]":
+            !vertical(),
+          "flex min-h-0 w-full flex-1 flex-col items-stretch gap-1.5 overflow-y-auto no-scrollbar [app-region:no-drag]":
+            vertical(),
+        }}
       >
         <DragDropProvider
           sensors={[
@@ -301,10 +326,15 @@ export function TitlebarTabStrip(props: {
                 (event.target instanceof Element && !!event.target.closest('[contenteditable="true"]')),
             }),
           ]}
-          modifiers={[RestrictToHorizontalAxis, RestrictToElement.configure({ element: () => listRef })]}
+          modifiers={[
+            vertical() ? RestrictToVerticalAxis : RestrictToHorizontalAxis,
+            RestrictToElement.configure({ element: () => listRef }),
+          ]}
           plugins={(defaults) => [
             ...defaults.filter((plugin) => plugin !== Accessibility),
-            AutoScroller.configure({ acceleration: 8, threshold: { x: 0.05, y: 0 } }),
+            AutoScroller.configure(
+              vertical() ? { acceleration: 8, threshold: { x: 0, y: 0.05 } } : { acceleration: 8, threshold: { x: 0.05, y: 0 } },
+            ),
             Feedback.configure({ dropAnimation: null }),
           ]}
           onDragStart={(event) => {
@@ -332,7 +362,14 @@ export function TitlebarTabStrip(props: {
             }
           }}
         >
-          <div data-titlebar-tab-list class="flex w-full min-w-0 flex-row items-center" ref={listRef}>
+          <div
+            data-titlebar-tab-list
+            ref={listRef}
+            classList={{
+              "flex w-full min-w-0 flex-row items-center": !vertical(),
+              "flex min-h-0 w-full flex-1 flex-col items-stretch": vertical(),
+            }}
+          >
             <For each={props.tabs}>
               {(tab) => {
                 const id = tabKey(tab)
@@ -360,6 +397,7 @@ export function TitlebarTabStrip(props: {
                         props.onNavigate(tab, element)
                       }}
                       onClose={() => props.onClose(tab)}
+                      vertical={vertical()}
                     />
                   )
                 }
@@ -376,6 +414,7 @@ export function TitlebarTabStrip(props: {
                       props.onNavigate(tab, element)
                     }}
                     onClose={() => props.onClose(tab)}
+                    vertical={vertical()}
                   />
                 )
               }}
@@ -383,16 +422,30 @@ export function TitlebarTabStrip(props: {
           </div>
         </DragDropProvider>
       </div>
-      <div
-        data-slot="titlebar-tabs-fade-left"
-        aria-hidden="true"
-        class="pointer-events-none absolute inset-y-0 left-0 z-10 w-6 bg-[linear-gradient(to_right,var(--v2-background-bg-deep),transparent)]"
-      />
-      <div
-        data-slot="titlebar-tabs-fade-right"
-        aria-hidden="true"
-        class="pointer-events-none absolute inset-y-0 right-0 z-10 w-6 bg-[linear-gradient(to_left,var(--v2-background-bg-deep),transparent)]"
-      />
+      <Show when={!vertical()}>
+        <div
+          data-slot="titlebar-tabs-fade-left"
+          aria-hidden="true"
+          class="pointer-events-none absolute inset-y-0 left-0 z-10 w-6 bg-[linear-gradient(to_right,var(--v2-background-bg-deep),transparent)]"
+        />
+        <div
+          data-slot="titlebar-tabs-fade-right"
+          aria-hidden="true"
+          class="pointer-events-none absolute inset-y-0 right-0 z-10 w-6 bg-[linear-gradient(to_left,var(--v2-background-bg-deep),transparent)]"
+        />
+      </Show>
+      <Show when={vertical()}>
+        <div
+          data-slot="titlebar-tabs-fade-top"
+          aria-hidden="true"
+          class="pointer-events-none absolute inset-x-0 top-0 z-10 h-6 bg-[linear-gradient(to_bottom,var(--v2-background-bg-deep),transparent)]"
+        />
+        <div
+          data-slot="titlebar-tabs-fade-bottom"
+          aria-hidden="true"
+          class="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-6 bg-[linear-gradient(to_top,var(--v2-background-bg-deep),transparent)]"
+        />
+      </Show>
     </div>
   )
 }

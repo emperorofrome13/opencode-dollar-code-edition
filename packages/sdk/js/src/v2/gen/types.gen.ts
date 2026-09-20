@@ -2029,6 +2029,7 @@ export type Config = {
     continue_loop_on_deny?: boolean
     mcp_timeout?: number
     policies?: Array<ConfigV2ExperimentalPolicy>
+    skill_index_names_only?: boolean
   }
 }
 
@@ -7463,6 +7464,89 @@ export type ConfigUpdateResponses = {
 }
 
 export type ConfigUpdateResponse = ConfigUpdateResponses[keyof ConfigUpdateResponses]
+
+export type ConfigContextSettingsData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/config/context-settings"
+}
+
+export type ConfigContextSettingsErrors = {
+  /**
+   * InvalidRequestError
+   */
+  400: InvalidRequestError
+}
+
+export type ConfigContextSettingsError = ConfigContextSettingsErrors[keyof ConfigContextSettingsErrors]
+
+export type ConfigContextSettingsResponses = {
+  /**
+   * Success
+   */
+  200: {
+    directory: string
+    configFile: string
+    dcpFile: string
+    compactSkills: boolean
+    compactSkillsOverride: boolean
+    dcp: boolean
+    registered: boolean
+    manualMode: boolean
+    automaticStrategies: boolean
+    rtk: boolean
+  }
+}
+
+export type ConfigContextSettingsResponse = ConfigContextSettingsResponses[keyof ConfigContextSettingsResponses]
+
+export type ConfigUpdateContextSettingsData = {
+  body?: {
+    setting: "compactSkills" | "dcp" | "manualMode" | "automaticStrategies" | "rtk"
+    enabled: boolean
+  }
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/config/context-settings"
+}
+
+export type ConfigUpdateContextSettingsErrors = {
+  /**
+   * InvalidRequestError
+   */
+  400: InvalidRequestError
+}
+
+export type ConfigUpdateContextSettingsError =
+  ConfigUpdateContextSettingsErrors[keyof ConfigUpdateContextSettingsErrors]
+
+export type ConfigUpdateContextSettingsResponses = {
+  /**
+   * Success
+   */
+  200: {
+    directory: string
+    configFile: string
+    dcpFile: string
+    compactSkills: boolean
+    compactSkillsOverride: boolean
+    dcp: boolean
+    registered: boolean
+    manualMode: boolean
+    automaticStrategies: boolean
+    rtk: boolean
+  }
+}
+
+export type ConfigUpdateContextSettingsResponse =
+  ConfigUpdateContextSettingsResponses[keyof ConfigUpdateContextSettingsResponses]
 
 export type ConfigProvidersData = {
   body?: never

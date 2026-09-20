@@ -1,4 +1,6 @@
 import { Config } from "@/config/config"
+import { ContextSettings } from "@/config/context-settings"
+import { InvalidRequestError } from "../errors"
 import { Provider } from "@/provider/provider"
 import * as InstanceState from "@/effect/instance-state"
 import { Effect } from "effect"
@@ -29,6 +31,19 @@ export const configHandlers = HttpApiBuilder.group(InstanceHttpApi, "config", (h
       }
     })
 
+    const contextSettings = Effect.fn("ConfigHttpApi.contextSettings")(function* (patch?: typeof ContextSettings.Patch.Type) {
+      const ctx = yield* InstanceState.context
+      const config = yield* configSvc.get()
+      return yield* (patch
+        ? ContextSettings.update(ctx.directory, ctx.worktree, config, patch)
+        : ContextSettings.get(ctx.directory, ctx.worktree, config)
+      ).pipe(Effect.mapError((error) => new InvalidRequestError({
+        message: error.cause instanceof Error ? error.cause.message : String(error.cause),
+      })))
+    })
+
     return handlers.handle("get", get).handle("update", update).handle("providers", providers)
+      .handle("contextSettings", () => contextSettings())
+      .handle("updateContextSettings", (ctx) => contextSettings(ctx.payload))
   }),
 )

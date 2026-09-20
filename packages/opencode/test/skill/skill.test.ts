@@ -64,6 +64,24 @@ const withHome = <A, E, R>(home: string, self: Effect.Effect<A, E, R>) =>
   )
 
 describe("skill", () => {
+  it.effect("formats names only deterministically without descriptions, locations, or content", () =>
+    Effect.sync(() => {
+      const skills: Skill.Info[] = [
+        { name: "zeta", description: "Zeta description", location: "/zeta/SKILL.md", content: "Zeta instructions" },
+        { name: "manual", location: "/manual/SKILL.md", content: "Manual instructions" },
+        { name: "alpha", description: "", location: "<built-in>", content: "Alpha instructions" },
+      ]
+      for (const verbose of [true, false]) {
+        expect(Skill.fmt(skills, { verbose, namesOnly: true })).toBe("- alpha\n- zeta")
+        expect(Skill.fmt(skills.toReversed(), { verbose, namesOnly: true })).toBe("- alpha\n- zeta")
+        expect(Skill.fmt([], { verbose, namesOnly: true })).toBe("No skills are currently available.")
+        expect(Skill.fmt([skills[1]], { verbose, namesOnly: true })).toBe("No skills are currently available.")
+        expect(Skill.fmt(skills, { verbose, namesOnly: false })).toBe(Skill.fmt(skills, { verbose }))
+      }
+      expect(skills.map((skill) => skill.name)).toEqual(["zeta", "manual", "alpha"])
+    }),
+  )
+
   it.effect("formats verbose locations as XML-safe filesystem paths", () =>
     Effect.sync(() => {
       const output = Skill.fmt(

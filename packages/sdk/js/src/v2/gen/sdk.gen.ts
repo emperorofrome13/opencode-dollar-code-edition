@@ -18,10 +18,14 @@ import type {
   CommandListErrors,
   CommandListResponses,
   Config as Config3,
+  ConfigContextSettingsErrors,
+  ConfigContextSettingsResponses,
   ConfigGetErrors,
   ConfigGetResponses,
   ConfigProvidersErrors,
   ConfigProvidersResponses,
+  ConfigUpdateContextSettingsErrors,
+  ConfigUpdateContextSettingsResponses,
   ConfigUpdateErrors,
   ConfigUpdateResponses,
   EventSubscribeResponses,
@@ -1472,6 +1476,79 @@ export class Config2 extends HeyApiClient {
     )
     return (options?.client ?? this.client).patch<ConfigUpdateResponses, ConfigUpdateErrors, ThrowOnError>({
       url: "/config",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
+  /**
+   * Get project context settings
+   */
+  public contextSettings<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<
+      ConfigContextSettingsResponses,
+      ConfigContextSettingsErrors,
+      ThrowOnError
+    >({
+      url: "/config/context-settings",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Persist project context settings; restart required
+   */
+  public updateContextSettings<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      setting?: "compactSkills" | "dcp" | "manualMode" | "automaticStrategies" | "rtk"
+      enabled?: boolean
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { in: "body", key: "setting" },
+            { in: "body", key: "enabled" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).patch<
+      ConfigUpdateContextSettingsResponses,
+      ConfigUpdateContextSettingsErrors,
+      ThrowOnError
+    >({
+      url: "/config/context-settings",
       ...options,
       ...params,
       headers: {
