@@ -1,3 +1,34 @@
+# opencode dollar code edition
+
+> A leaner, cheaper-to-run fork of [opencode](https://github.com/sst/opencode)
+> (upstream). Everything below the benefits list is the upstream README, kept
+> intact for reference.
+
+## Why this fork (benefits over upstream)
+
+Measured on real runs, not vibes — details in [HANDOFF.md](./HANDOFF.md):
+
+- **Lower token bills.** Tool and prompt descriptions trimmed (schemas, permissions
+  and behavior untouched): shell tool prompt −52%, root AGENTS.md −84%
+  (~2,227 → ~355 tokens of every-session context), compact single system prompt
+  (~258 tokens vs ~2,132 before). Fewer tokens per request on every provider.
+- **RTK command compression + toggle.** Optional `rtk` plugin rewrites shell
+  commands compactly (measured: full `git diff HEAD` 322,913 → 35,861 chars,
+  ≈71K tokens saved on one call), with a Settings toggle. No-op when `rtk`
+  is not installed.
+- **Windows launcher that works.** `quickstart.bat` double-click start
+  (deps → UI build → backend → frontend) plus `stop.bat`; fixed the bogus
+  Solid preload that killed the upstream launcher at step 3/4.
+- **Calmer desktop UI.** Vertical sessions sidebar (no horizontal tab strip),
+  vertical settings tabs, version in the title/header.
+- **Full desktop app.** `packages/desktop` (Electron, same approach as opencode
+  desktop) builds the `opencode dollar code edition` installer:
+  `bun run build && bun run package` in `packages/desktop`.
+- **Same engine, same tests.** Upstream behavior preserved; targeted suites
+  green (system 45, shell 65, task/truncation/skill 62).
+
+---
+
 <p align="center">
   <a href="https://opencode.ai">
     <picture>
