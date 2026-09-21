@@ -1,8 +1,23 @@
 # opencode dollar code edition
 
-> A leaner, cheaper-to-run fork of [opencode](https://github.com/sst/opencode)
-> (upstream). Everything below the benefits list is the upstream README, kept
-> intact for reference.
+> **Unofficial independent fork — NOT an OpenCode product, and NOT made by,
+> affiliated with, or supported by the OpenCode team (SST).** This is a
+> community fork maintained separately. "OpenCode" belongs to its owners;
+> upstream docs and links below refer to their project, not this fork. If you
+> want the official product, go to [opencode.ai](https://opencode.ai) or
+> [sst/opencode](https://github.com/sst/opencode).
+
+A leaner, cheaper-to-run fork of [opencode](https://github.com/sst/opencode).
+Upstream's README is kept below for reference; install instructions down there
+point at upstream — **to get THIS edition, use the links above, not those**.
+
+## Get this edition
+
+- **Windows installer (recommended):**
+  [Releases](https://github.com/emperorofrome13/opencode-dollar-code-edition/releases)
+  → `opencode-desktop-win-x64.exe`. Per-user install, no admin needed.
+- **From source:** `quickstart.bat` (double-click; Windows) or
+  `bun install && bun dev`. Stop with `stop.bat`.
 
 ## Why this fork (benefits over upstream)
 
@@ -38,12 +53,7 @@ Measured on real runs, not vibes — details in [HANDOFF.md](./HANDOFF.md):
     </picture>
   </a>
 </p>
-<p align="center">The open source AI coding agent.</p>
-<p align="center">
-  <a href="https://opencode.ai/discord"><img alt="Discord" src="https://img.shields.io/discord/1391832426048651334?style=flat-square&label=discord" /></a>
-  <a href="https://www.npmjs.com/package/opencode-ai"><img alt="npm" src="https://img.shields.io/npm/v/opencode-ai?style=flat-square" /></a>
-  <a href="https://github.com/anomalyco/opencode/actions/workflows/publish.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/anomalyco/opencode/publish.yml?style=flat-square&branch=dev" /></a>
-</p>
+<p align="center">The open source AI coding agent. (Upstream project badges and links below refer to sst/opencode, not this fork.)</p>
 
 <p align="center">
   <a href="README.md">English</a> |
@@ -97,7 +107,11 @@ nix run nixpkgs#opencode           # or github:anomalyco/opencode for latest dev
 
 ### Desktop App (BETA)
 
-OpenCode is also available as a desktop application. Download directly from the [releases page](https://github.com/anomalyco/opencode/releases) or [opencode.ai/download](https://opencode.ai/download).
+OpenCode is also available as a desktop application. Download directly from the [releases
+page](https://github.com/anomalyco/opencode/releases) or [opencode.ai/download](https://opencode.ai/download).
+
+> Fork note: those are upstream's downloads. THIS edition's Windows installer is on
+> [this fork's releases page](https://github.com/emperorofrome13/opencode-dollar-code-edition/releases).
 
 | Platform              | Download                           |
 | --------------------- | ---------------------------------- |
