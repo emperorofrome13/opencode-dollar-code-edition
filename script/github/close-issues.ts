@@ -1,6 +1,10 @@
 #!/usr/bin/env bun
 
 const repo = "anomalyco/opencode"
+if (process.env.GITHUB_REPOSITORY !== repo) {
+  console.log(`Skipping upstream-only issue cleanup for ${process.env.GITHUB_REPOSITORY ?? "local execution"}`)
+  process.exit(0)
+}
 const days = 60
 const msg = `To stay organized issues are automatically closed after ${days} days of no activity. If the issue is still relevant please open a new one.`
 
