@@ -148,6 +148,21 @@ v1.01; build rebuilt clean.
   `lmstudio.models` expanded from 3 hardcoded entries to 97 live entries (qwen 3.5/3.6/3.8,
   gemma, glm-4.7-flash, spark, ornith, bonsai, muse-glimmer, etc.). Fixture rebuilt clean.
 
+## Follow-up: guard upstream cleanup workflows (2026-09-23)
+
+The scheduled `close-issues` and `close-prs` Actions were targeting `anomalyco/opencode` from this independent repository. Their repository-scoped tokens cannot write to upstream, so both failed with 403 errors and generated GitHub CI activity notifications.
+
+Both scripts now exit successfully unless they run in the canonical `anomalyco/opencode` repository. This prevents the fork's scheduled jobs from attempting upstream writes. The README already states that this fork is unofficial and unaffiliated with the OpenCode team, so no README edit was needed.
+
+Verification: latest failure logs confirmed the 403 write attempts; this repository currently has zero open issues and zero open pull requests. Manual guard checks on Windows PowerShell:
+
+```powershell
+$env:GITHUB_REPOSITORY = 'emperorofrome13/opencode-dollar-code-edition'
+bun script/github/close-issues.ts
+bun script/github/close-prs.ts --dry-run
+```
+
+Both should print a skip message and exit successfully without needing a token. Current change is in draft PR #1; merge it to apply. At last check, 3 GitHub checks had passed and 7 remained queued.
 ## Known issues / next steps
 
 - V2 Core tool descriptions not trimmed (separate inline strings; V2 prompt already neutral one-liner).
