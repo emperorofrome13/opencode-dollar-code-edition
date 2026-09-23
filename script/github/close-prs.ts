@@ -60,6 +60,11 @@ if (values.execute && values["dry-run"]) {
   process.exit(1)
 }
 
+if (process.env.GITHUB_REPOSITORY !== defaultRepo || values.repo !== defaultRepo) {
+  console.log(`Skipping upstream-only PR cleanup for ${process.env.GITHUB_REPOSITORY ?? "local execution"}`)
+  process.exit(0)
+}
+
 const token = await requireToken()
 const repo = requireRepo(values.repo)
 const threshold = requirePositiveInteger("threshold", values.threshold)
