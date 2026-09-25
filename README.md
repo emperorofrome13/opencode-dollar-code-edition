@@ -2,7 +2,7 @@
 
 > **Unofficial independent fork — NOT an OpenCode product, and NOT made by,
 > affiliated with, or supported by the OpenCode team (SST).** This is a
-> community fork maintained separately. "OpenCode" belongs to its owners;
+> community fork maintained and customized by [@emperorofrome13](https://github.com/emperorofrome13). Original OpenCode code belongs to its owners;
 > upstream docs and links below refer to their project, not this fork. If you
 > want the official product, go to [opencode.ai](https://opencode.ai) or
 > [sst/opencode](https://github.com/sst/opencode).
@@ -41,6 +41,12 @@ Measured on real runs, not vibes — details in [HANDOFF.md](./HANDOFF.md):
   `bun run build && bun run package` in `packages/desktop`.
 - **Same engine, same tests.** Upstream behavior preserved; targeted suites
   green (system 45, shell 65, task/truncation/skill 62).
+
+## Inkling Free output comparison
+
+For the model-ranking page benchmark, this fork used 113,816 logged total tokens
+versus 246,803 for regular OpenCode (53.9% fewer). Manual source-code-quality
+review scored the generated pages 7/10 and 5/10, respectively.
 
 ---
 
