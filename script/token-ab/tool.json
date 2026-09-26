@@ -1,0 +1,1 @@
+{"name":"bash","args":{"command":"node -e \"for(let i=0;i<20000;i++)console.log('x'.repeat(60))\""}}
