@@ -27,21 +27,30 @@ mock LLM and tokenizes the exact request bodies each sends (`o200k_base`). These
 **input-token** reductions, not a dollar figure: billing also depends on cache reads/writes
 and output tokens, which this fork does not change. Raw numbers are in [HANDOFF.md](./HANDOFF.md).
 
-- **Lower per-turn context overhead (live-measured).** On the first request the fork sends
-  **−2,966 tokens** vs upstream: system prompt **−1,582**, tool definitions **−1,220**
-  (same 10 tools). One compact `default.txt` replaces the per-model system prompts
-  (1,766 → 187 tokens); shell prompt 3,993 → 1,942; task / todowrite / webfetch / websearch
-  trimmed. Static prompt-file overhead reduction ≈ **−4,300 tokens per session**
-  (≈ −5,850 when the fork's own repo `AGENTS.md` applies). Schemas and permissions are
-  untouched; prompt selection and output limits are deliberately changed (see below).
+- **~30% less context per turn (live-measured).** On the first request the fork sends
+  **−2,964 tokens** vs upstream (**9,333 → 6,369**, **−31.7%**): system prompt **−1,580**,
+  tool definitions **−1,220** (same 10 tools). One compact `default.txt` replaces the
+  per-model system prompts (1,766 → 187 tokens); shell prompt 3,993 → 1,942; task /
+  todowrite / webfetch / websearch trimmed. Static prompt-file overhead reduction
+  ≈ **−4,300 tokens per session** (≈ −5,850 when the fork's own repo `AGENTS.md` applies).
+  Schemas and permissions are untouched; prompt selection and output limits are
+  deliberately changed (see below).
 - **Smaller tool results (live-measured).** Tool-output truncation lowered from 50 KiB /
   2,000 lines to 16 KiB / 500 lines. On a ~1.2 MB `bash` result the model sees 2,473 tokens
   instead of 7,609 (**−5,136**); the full follow-up request is **−8,099**. Cap-driven, at
   the cost of the model seeing less of that output.
-- **RTK command compression + toggle (optional).** The `rtk` plugin rewrites shell commands
-  to compact output (e.g. `git status` 7,862 → 6,131 chars). It only reduces model-visible
-  tokens when the rewritten output fits under the fork's 16 KiB cap; for larger output the
-  cap decides, not RTK. Requires the `rtk` binary in PATH and the project-plugin install
+- **A ~10M-token job sends ~68% fewer input tokens (live-measured).** 56 large tool
+  results (~1.2 MB / ~180K tokens each ≈ **10.1M tokens of raw output**) in one session:
+  upstream sends **12,300,010** cumulative input tokens, the fork **3,984,325** —
+  **−8,315,685 (−67.6%)** — and the final context is 421,962 vs 134,799 tokens. Same
+  commands, same model, only the fork's prompts + truncation differ.
+- **RTK command compression (optional, external).** This is **not this fork's claim** —
+  quoted from [RTK's own README](https://github.com/rtk-ai/rtk): *"High-performance CLI
+  proxy that cuts up to 90% of the bash output your agent reads"* and *"reduces LLM token
+  consumption by 60-90% on common dev commands."* RTK itself cautions that this is
+  bash-output reduction, *"not the same as cutting your bill by 90%"*, and that its
+  absolute token numbers are `bytes / 4` estimates. This fork only wires the plugin; the
+  compression is RTK's. Requires the `rtk` binary in PATH and the project-plugin install
   (see below). No-op when `rtk` is missing.
 - **Windows launcher that works.** `quickstart.bat` double-click start
   (deps → UI build → backend → frontend) plus `stop.bat`; fixed the bogus

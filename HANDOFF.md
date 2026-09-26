@@ -262,6 +262,21 @@ Per-tool: `bash` 1,478→811 (−667), `task` 881→668 (−213), `todowrite`
 | tool result in context | 51,347 chars / 7,609 tok | 16,512 chars / 2,473 tok | **−5,136** |
 | full follow-up request | 17,042 | 8,943 | **−8,099** |
 
+### Multi-turn session (~10M-token job, 2026-09-25)
+`MOCK_TOOL_TURNS=56`: the mock asks for the same large `bash` command for 56
+turns; each turn emits ~1.2 MB / ~180K tokens of raw output (≈ **10.1M tokens**
+total). Both versions truncate each result before it reaches the model, and the
+whole session's cumulative input is summed.
+
+| item | upstream | fork | delta |
+|---|---:|---:|---:|
+| requests captured | 57 | 57 | — |
+| cumulative input tokens | 12,300,010 | 3,984,325 | **−8,315,685 (−67.6%)** |
+| final context tokens | 421,962 | 134,799 | −287,163 |
+
+The fork's advantage grows with session length because its smaller system prompt
+and smaller truncated tool results are re-sent on every subsequent turn.
+
 ### Honest caveats
 - These are **input-token** reductions, not dollars. Billing depends on cache
   reads/writes and output tokens; shortening a stable prefix can help, but
