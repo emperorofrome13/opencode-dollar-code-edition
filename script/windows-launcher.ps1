@@ -127,7 +127,11 @@ try {
     }
     if (!(Test-Path -LiteralPath (Join-Path $root '.opencode\node_modules\@tarquinen\opencode-dcp\dist\index.js'))) {
         Write-Host 'Installing existing project plugin dependencies...'
-        & npm.cmd ci --prefix (Join-Path $root '.opencode') --no-audit --no-fund
+        if (Test-Path -LiteralPath (Join-Path $root '.opencode\package-lock.json')) {
+            & npm.cmd ci --prefix (Join-Path $root '.opencode') --no-audit --no-fund
+        } else {
+            & npm.cmd install --prefix (Join-Path $root '.opencode') --no-audit --no-fund
+        }
         if ($LASTEXITCODE -ne 0) { throw 'Project plugin install failed. Retry: npm ci --prefix .opencode' }
     }
     $BackendPort = Get-FreePort $BackendPort

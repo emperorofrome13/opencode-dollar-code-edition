@@ -1,0 +1,10 @@
+{
+  "name": "opencodefork-project-plugins",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@opencode-ai/plugin": "1.18.31",
+    "@tarquinen/opencode-dcp": "3.1.15",
+    "opencode-rtk": "0.0.1"
+  }
+}
