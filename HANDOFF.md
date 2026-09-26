@@ -304,3 +304,28 @@ tracked, and `benchmark_results.json` intentionally left untracked.
 Note: a redundant `.git`-less tree at `E:\aiprojects\coders\other\opencodellarcode`
 (127.9 MB, from an earlier typo) still exists and can be deleted.
 
+## Release v1.02-dollar (2026-09-26)
+
+Rebuilt the Windows installer so it finally carries the fork's own CLI. The
+v1.01 installer bundled an upstream CLI, so its token diet was inactive.
+
+- Release: `v1.02-dollar` at `e96ea45d32` (dev tip) -
+  https://github.com/emperorofrome13/opencode-dollar-code-edition/releases/tag/v1.02-dollar
+- Asset: `opencode-desktop-win-x64.exe`, 179,374,425 B,
+  sha256 `7fa3ecd426fd3e9cc05e4db08384914806c006251391581429eb5097c1e749c9`
+- Build steps (from `E:\aiprojects\coders\other\opencodefork`):
+  1. `cd packages/opencode; bun run script/build.ts --single --baseline`
+     -> `dist/opencode-windows-x64-baseline/bin/opencode.exe` (172,869,632 B,
+     version `0.0.0-dev-202609260316`).
+  2. Copy it over `packages/desktop/resources/opencode-cli.exe`. Keep exactly one
+     `opencode-cli*` file there: electron-builder's `opencode-cli*` extraResources
+     glob bundles every match (a stray backup inflated one build to 235 MB).
+  3. `cd packages/desktop; $env:OPENCODE_CHANNEL="dev";
+     .\node_modules\.bin\electron-builder.exe --win --config electron-builder.config.ts`
+     Do NOT run `bun run build`: its `prebuild` downloads an upstream CLI.
+- Verified: the bundled `dist/win-unpacked/resources/opencode-cli.exe` contains
+  the fork prompt strings ("Never expose, log, or commit secrets") and not the
+  upstream ones; launching `dist/win-unpacked/opencode dollar code edition.exe`
+  spawned the sidecar and logged `server ready { url: 'http://127.0.0.1:52946' }`.
+- `v1.01-dollar` remains published but its installer bundles the upstream CLI.
+
