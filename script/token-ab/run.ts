@@ -14,8 +14,10 @@
 //   AB_OUT           capture output dir (default: script/token-ab/out)
 //   AB_MSG           the single user message (default: "hello")
 //   AB_TAG           suffix for capture filenames
-//   MOCK_TOOL        JSON {name,args}; when set, the first turn calls a tool
-//                    (use script/token-ab/tool.json to force a large bash output)
+//   AB_TOOL_FILE     tool spec to force (default: tool.json)
+//   AB_CONTEXT_LIMIT model context window advertised to opencode (default: 100000)
+//   MOCK_TOOL_TURNS  how many turns the mock keeps asking for the tool (default: 1)
+//   MOCK_TOOL        JSON {name,args}; overrides AB_TOOL_FILE
 import { existsSync, mkdtempSync, readFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
@@ -26,8 +28,10 @@ const MOCK = join(HERE, "mock-llm.ts")
 const OUT = process.env.AB_OUT ?? join(HERE, "out")
 const MSG = process.env.AB_MSG ?? "hello"
 const TAG = process.env.AB_TAG ?? ""
-const TOOL_FILE = join(HERE, "tool.json")
+const TOOL_FILE = join(HERE, process.env.AB_TOOL_FILE ?? "tool.json")
 const TOOL_SPEC = process.env.MOCK_TOOL ?? (existsSync(TOOL_FILE) ? readFileSync(TOOL_FILE, "utf8").trim() : "")
+const TOOL_TURNS = process.env.MOCK_TOOL_TURNS ?? "1"
+const CONTEXT_LIMIT = Number(process.env.AB_CONTEXT_LIMIT ?? 100_000)
 const UPSTREAM_CLI = process.env.AB_UPSTREAM_CLI
 
 if (!UPSTREAM_CLI) throw new Error("set AB_UPSTREAM_CLI to the upstream checkout's packages/opencode/src/index.ts")
@@ -51,7 +55,7 @@ function testProviderConfig(llmUrl: string) {
             temperature: false,
             tool_call: true,
             release_date: "2025-01-01",
-            limit: { context: 100_000, output: 10_000 },
+            limit: { context: CONTEXT_LIMIT, output: 10_000 },
             cost: { input: 0, output: 0 },
             options: {},
           },
@@ -103,7 +107,7 @@ async function waitReady(port: number) {
 
 for (const t of targets) {
   const srv = Bun.spawn(["bun", "run", MOCK], {
-    env: { ...process.env, MOCK_PORT: String(t.port), MOCK_CAPTURE: t.capture, ...(TOOL_SPEC ? { MOCK_TOOL: TOOL_SPEC } : {}) },
+    env: { ...process.env, MOCK_PORT: String(t.port), MOCK_CAPTURE: t.capture, MOCK_TOOL_TURNS: TOOL_TURNS, ...(TOOL_SPEC ? { MOCK_TOOL: TOOL_SPEC } : {}) },
     stdout: "pipe",
     stderr: "pipe",
   })

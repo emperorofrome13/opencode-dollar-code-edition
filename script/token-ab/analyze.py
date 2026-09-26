@@ -104,3 +104,11 @@ if utc is not None and ftc is not None:
     print(f"  delta tokens: {tok(ftc) - tok(utc)}")
 else:
     print("  (no tool call in this capture; set MOCK_TOOL or tool.json)")
+
+print("\n===== SESSION (every captured request; set MOCK_TOOL_TURNS > 1 for multi-turn) =====")
+us = [tok(json.dumps(b)) for b in up if not is_title(b)]
+fs = [tok(json.dumps(b)) for b in fk if not is_title(b)]
+print(f"  {'upstream':<9} requests={len(us):>4}  sum_input_tokens={sum(us):>12,}  final_context={us[-1] if us else 0:>12,}")
+print(f"  {'fork':<9} requests={len(fs):>4}  sum_input_tokens={sum(fs):>12,}  final_context={fs[-1] if fs else 0:>12,}")
+if us and fs:
+    print(f"  session delta: {sum(fs) - sum(us):>12,} tokens  ({100 * (1 - sum(fs) / sum(us)):.1f}% less input in the fork)")

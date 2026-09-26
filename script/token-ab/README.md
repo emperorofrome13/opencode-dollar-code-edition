@@ -17,6 +17,9 @@ real `~/.local/share/opencode` is never touched.
 2. **Tool output truncation** — `tool.json` makes the mock request one `bash`
    call whose output is ~1.2 MB, so the follow-up request carries the truncated
    tool result the model would actually see.
+3. **Multi-turn session** — `MOCK_TOOL_TURNS=N` keeps the mock asking for the
+   same tool for N turns, so the cumulative context growth of a long job is
+   measured, not just a single turn.
 
 ## Run it
 
@@ -68,6 +71,30 @@ One `bash` call emitting ~1.2 MB:
 
 The upstream cap is 50 KiB / 2,000 lines (`packages/opencode/src/tool/truncate.ts`);
 the fork lowers it to 16 KiB / 500 lines.
+
+### Multi-turn session (~10M-token job)
+
+`MOCK_TOOL_TURNS=56` keeps the mock asking for the same large `bash` command
+for 56 turns. Each turn emits ~1.2 MB / ~180K tokens of raw output (≈ **10.1M
+tokens** in total), which both versions truncate before it reaches the model.
+`analyze.py` then sums the input tokens across the whole session.
+
+```powershell
+$env:MOCK_TOOL_TURNS = "56"
+$env:AB_CONTEXT_LIMIT = "2000000"   # the session outgrows the default 100K window
+$env:AB_TAG = "-10m"
+bun run script/token-ab/run.ts
+python script/token-ab/analyze.py script/token-ab/out -10m
+```
+
+| item | upstream | fork | delta |
+|---|---:|---:|---:|
+| requests captured | 57 | 57 | — |
+| cumulative input tokens | 12,300,010 | 3,984,325 | **−8,315,685 (−67.6%)** |
+| final context tokens | 421,962 | 134,799 | −287,163 |
+
+The delta is larger than the single-turn case because both the smaller system
+prompt and the smaller truncated tool results are re-sent on every later turn.
 
 ## Caveats (read this)
 

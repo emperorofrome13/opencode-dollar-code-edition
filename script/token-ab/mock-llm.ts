@@ -6,10 +6,15 @@
 // non-title turn returns a tool call instead, so a second request carrying the
 // tool result is captured too (this is how tool-output truncation is measured).
 //
-// Env: MOCK_PORT, MOCK_CAPTURE, MOCK_TOOL
+// MOCK_TOOL_TURNS makes the mock keep asking for the same tool for that many
+// turns before it stops, so a whole multi-turn session (and its cumulative
+// context growth) can be captured, not just a single tool result.
+//
+// Env: MOCK_PORT, MOCK_CAPTURE, MOCK_TOOL, MOCK_TOOL_TURNS
 const port = Number(process.env.MOCK_PORT ?? "4631")
 const capture = process.env.MOCK_CAPTURE ?? "capture.jsonl"
 const tool = process.env.MOCK_TOOL ? JSON.parse(process.env.MOCK_TOOL) : null
+const toolTurns = Number(process.env.MOCK_TOOL_TURNS ?? "1")
 
 function line(part: Record<string, unknown>) {
   return `data: ${JSON.stringify({
@@ -40,13 +45,13 @@ function textReply() {
   ])
 }
 
-function toolReply() {
+function toolReply(id: string) {
   const args = JSON.stringify(tool.args ?? {})
   return sse([
     line({ delta: { role: "assistant" } }),
     line({
       delta: {
-        tool_calls: [{ index: 0, id: "call_1", type: "function", function: { name: tool.name, arguments: "" } }],
+        tool_calls: [{ index: 0, id, type: "function", function: { name: tool.name, arguments: "" } }],
       },
     }),
     line({ delta: { tool_calls: [{ index: 0, function: { arguments: args } }] } }),
@@ -73,8 +78,8 @@ Bun.serve({
       )
       const body = JSON.parse(text)
       const isTitle = text.includes("Generate a title for this conversation")
-      const hasToolResult = (body.messages ?? []).some((m: { role?: string }) => m.role === "tool")
-      if (tool && !isTitle && !hasToolResult) return toolReply()
+      const toolResults = (body.messages ?? []).filter((m: { role?: string }) => m.role === "tool").length
+      if (tool && !isTitle && toolResults < toolTurns) return toolReply(`call_${toolResults + 1}`)
       return textReply()
     }
     return new Response("not found", { status: 404 })
