@@ -21,16 +21,28 @@ point at upstream — **to get THIS edition, use the links above, not those**.
 
 ## Why this fork (benefits over upstream)
 
-Measured on real runs, not vibes — details in [HANDOFF.md](./HANDOFF.md):
+Measured end-to-end on real runs, not estimated. The reproducible harness is in
+[`script/token-ab/`](./script/token-ab/): it runs the upstream base and this fork against a
+mock LLM and tokenizes the exact request bodies each sends (`o200k_base`). These are
+**input-token** reductions, not a dollar figure: billing also depends on cache reads/writes
+and output tokens, which this fork does not change. Raw numbers are in [HANDOFF.md](./HANDOFF.md).
 
-- **Lower token bills.** Tool and prompt descriptions trimmed (schemas, permissions
-  and behavior untouched): shell tool prompt −52%, root AGENTS.md −84%
-  (~2,227 → ~355 tokens of every-session context), compact single system prompt
-  (~258 tokens vs ~2,132 before). Fewer tokens per request on every provider.
-- **RTK command compression + toggle.** Optional `rtk` plugin rewrites shell
-  commands compactly (measured: full `git diff HEAD` 322,913 → 35,861 chars,
-  ≈71K tokens saved on one call), with a Settings toggle. No-op when `rtk`
-  is not installed.
+- **Lower per-turn context overhead (live-measured).** On the first request the fork sends
+  **−2,966 tokens** vs upstream: system prompt **−1,582**, tool definitions **−1,220**
+  (same 10 tools). One compact `default.txt` replaces the per-model system prompts
+  (1,766 → 187 tokens); shell prompt 3,993 → 1,942; task / todowrite / webfetch / websearch
+  trimmed. Static prompt-file overhead reduction ≈ **−4,300 tokens per session**
+  (≈ −5,850 when the fork's own repo `AGENTS.md` applies). Schemas and permissions are
+  untouched; prompt selection and output limits are deliberately changed (see below).
+- **Smaller tool results (live-measured).** Tool-output truncation lowered from 50 KiB /
+  2,000 lines to 16 KiB / 500 lines. On a ~1.2 MB `bash` result the model sees 2,473 tokens
+  instead of 7,609 (**−5,136**); the full follow-up request is **−8,099**. Cap-driven, at
+  the cost of the model seeing less of that output.
+- **RTK command compression + toggle (optional).** The `rtk` plugin rewrites shell commands
+  to compact output (e.g. `git status` 7,862 → 6,131 chars). It only reduces model-visible
+  tokens when the rewritten output fits under the fork's 16 KiB cap; for larger output the
+  cap decides, not RTK. Requires the `rtk` binary in PATH and the project-plugin install
+  (see below). No-op when `rtk` is missing.
 - **Windows launcher that works.** `quickstart.bat` double-click start
   (deps → UI build → backend → frontend) plus `stop.bat`; fixed the bogus
   Solid preload that killed the upstream launcher at step 3/4.
@@ -39,8 +51,23 @@ Measured on real runs, not vibes — details in [HANDOFF.md](./HANDOFF.md):
 - **Full desktop app.** `packages/desktop` (Electron, same approach as opencode
   desktop) builds the `opencode dollar code edition` installer:
   `bun run build && bun run package` in `packages/desktop`.
-- **Same engine, same tests.** Upstream behavior preserved; targeted suites
-  green (system 45, shell 65, task/truncation/skill 62).
+- **Same engine, targeted tests green.** system 45, shell 65, task/truncation/skill 62.
+  Green suites show the changed code paths behave; they are not a claim of equivalent
+  task performance on every model or workflow.
+
+### Project plugins (DCP / RTK)
+
+The `opencode-dcp` and `opencode-rtk` plugins are declared in
+`.opencode/opencode.jsonc` and pinned in the committed `.opencode/package.json` +
+`.opencode/package-lock.json`. Install them once:
+
+```bash
+npm ci --prefix .opencode        # or: bun install --cwd .opencode
+```
+
+`quickstart.bat` does this automatically (and falls back to `npm install` if the
+lockfile is missing). If you skip it, the plugin loader skips both plugins and the
+compression features are simply off.
 
 ## Inkling Free output comparison
 

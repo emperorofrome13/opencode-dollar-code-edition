@@ -91,8 +91,9 @@ credential-derived test URL deleted.
   default-export loads, `tool.execute.before` exposed, `git status` → `rtk git status`, non-bash
   untouched, `echo hello` passes through; repo `opencode.jsonc` parses with 0 errors.
 - Measured on this repo (chars): `git status` 7,862 → 6,131 (−22%); full `git diff HEAD`
-  322,913 → 35,861 (−89%, ≈71K tokens saved on one call); `--stat` and `--oneline log` already
-  compact, unchanged. V1 runtime only (same as DCP).
+  322,913 → 35,861 (−89%). NOTE: the "≈71K tokens saved" figure originally written here was
+  wrong — it divided raw diff chars by 4 and ignored upstream's 50 KiB output cap. Correct
+  model-visible delta is ~8.9K tokens (see "Feedback audit" at the end of this file).
 
 ## Follow-up: vertical sessions sidebar, fork v1.01 (2026-09-18)
 
@@ -153,3 +154,120 @@ v1.01; build rebuilt clean.
 - V2 Core tool descriptions not trimmed (separate inline strings; V2 prompt already neutral one-liner).
 - Old provider prompt `.txt` files still on disk but unreferenced — delete only if you want the cosmetic cleanup.
 - Root lint has a pre-existing unrelated octal-escape warning in session-ui; untouched by policy.
+
+## Feedback audit + critical fixes (2026-09-25)
+
+A reviewer raised ~10 objections to the fork's token-savings claims and repo hygiene.
+Each was checked against the repo, the OpenRouter activity CSV, and local session DBs.
+Verdict: **the token-trimming is real, but the published numbers were overstated and
+several hygiene/install defects were real.** Details:
+
+1. **"71K tokens saved" was wrong (confirmed).** It was `(322,913 − 35,861) / 4`.
+   Upstream truncates tool output to 50 KiB / 2,000 lines; this fork to 16 KiB / 500
+   (`packages/opencode/src/tool/truncate.ts` L14-15, `packages/core/src/tool-output-store.ts`
+   L13-14). So upstream sent `min(322,913, 51,200) = 51,200 B` and the fork sends
+   `min(35,861, 16,384) = 16,384 B`. Tokenizing a real 3.2 MB diff with `o200k_base`:
+   51,200 B ≈ 13,062 tok vs 16,384 B ≈ 4,170 tok → **~8.9K tokens actually saved (~8×
+   less than claimed)**. RTK contributed **0** on that call: its 35,861-char output is
+   still above the 16 KiB cap, so the cap alone decides what the model sees.
+2. **Plugin install was not reproducible (confirmed, now fixed).** `.opencode/opencode.jsonc`
+   registers `@tarquinen/opencode-dcp` and `opencode-rtk`, but `.opencode/package.json` and
+   `.opencode/package-lock.json` were git-ignored, so a clean checkout had no manifest and
+   `npm ci` failed → the loader skipped both plugins. Fixed: both files are now committed
+   (removed from `.opencode/.gitignore`) and `script/windows-launcher.ps1` falls back to
+   `npm install` when no lockfile is present.
+3. **"Behavior untouched" was false (confirmed).** `packages/opencode/src/session/system.ts`
+   returns the single `default.txt` for every model, dropping the per-model templates; the
+   compact skill index drops skill descriptions (`packages/core/src/skill/guidance.ts`
+   `renderNames`); truncation limits were lowered.
+4. **Passing unit tests ≠ task parity (valid point).** README wording softened accordingly.
+5. **AGENTS.md saving is repo-scoped (confirmed).** Measured 8,748 ch / 1,893 tok →
+   1,416 ch / 330 tok (−82.6%), but it only applies when working inside this repo.
+6. **Benchmark insufficient (confirmed).** `benchmark_results.json` is only
+   `status: executed_briefly`; no metrics.
+7. **Cache-aware billing ignored (confirmed).** OpenRouter CSV `opencodefork` key
+   (1,072 generations): prompt 102.8M, cached 92.3M (89.8% hit), fresh 10.5M,
+   completion 684K, `cost_total` $1.5865, `cost_cache` −$5.3071. Aggregate token counts
+   cannot isolate the fork's effect (cache dominates; tasks/models differ; most calls free).
+8. **Session-DB comparison.** First-assistant input: fork ~7.6–9.3K (avg ~8.3K) vs
+   upstream 1.18.31/1.18.32 ~9.5K avg. Real but modest, and confounded by task mix.
+9. **Broken symlink (confirmed, fix documented).** `packages/app/src/custom-elements.d.ts`
+   is git mode `120000` (symlink) with blob content `import "../../ui/src/custom-elements"`
+   (upstream's target was `../../ui/src/custom-elements.d.ts`). On Linux/macOS this is a
+   broken symlink; Windows materializes it as a regular file, hiding the bug. Convert to a
+   normal file when applying:
+   ```bash
+   git rm --cached -- packages/app/src/custom-elements.d.ts
+   git add -- packages/app/src/custom-elements.d.ts   # 120000 -> 100644, content kept
+   ```
+   (Verified in a throwaway repo: `git ls-files -s` flips `120000` → `100644`, same blob.)
+10. **Tests depend on the uncommitted plugin (confirmed, mitigated by fix #2).**
+    `packages/opencode/test/plugin/dcp.test.ts` reads the local DCP `package.json` (3.1.15);
+    it now resolves after `npm ci --prefix .opencode`.
+11. **115-file commit mixes unrelated changes (confirmed).** `cbc4bb571f` = 115 files,
+    +54,417 / −13,761, including ~80 i18n locale files and a 63K-line
+    `models-api.json` fixture rebuilt from a local `localhost:1234/v1/models` catalogue
+    (HANDOFF itself documents this). Recommend splitting into focused commits.
+
+### Corrected savings statement (use this)
+- Static per-session overhead: system prompt 1,766 → 187 tok; shell prompt 3,993 → 1,942 tok;
+  task 489→280, todowrite 456→279, webfetch 167→43, websearch 216→69. **≈ −4,287 tok/session**
+  excluding the repo AGENTS.md, **≈ −5,850** including it.
+- Oversized tool results: cap-driven, up to ~13.1K → ~4.2K model-visible tokens per result.
+- These are token-count reductions, **not** dollar savings; billing depends on cache
+  reads/writes and output tokens, which are unchanged.
+
+### Verified this session
+- Clean copy `E:\aiprojects\coders\other\opencodollarcode` (from `git archive HEAD`).
+- `npm ci --prefix .opencode` → **added 137 packages, exit 0** after committing the manifest.
+- `git rm --cached` + `git add` symlink→file conversion verified in a throwaway repo.
+- Prompt token counts via `tiktoken` `o200k_base` on fork vs `cbc4bb571f^`.
+
+## Live A/B evidence (2026-09-25)
+
+The earlier savings numbers were derived from static prompt files and
+character counts. To answer the "not demonstrated" critique, the fork and its
+upstream parent (`cbc4bb571f^` = v1.18.31) were run against the **same mock
+OpenAI-compatible server**, same project dir, same model/agent, same user
+message, and the actual request bodies were captured and tokenized.
+
+Harness (committed): `script/token-ab/`
+- `mock-llm.ts` — OpenAI-compatible server; captures every request body to JSONL.
+- `run.ts` — runs upstream + fork against it (`AB_UPSTREAM_CLI`, `AB_FORK_CLI`, `AB_OUT`, `AB_MSG`, `AB_TAG`).
+- `analyze.py` — tokenizes captured bodies (`python analyze.py [dir] [tag]`).
+- `tool.json` — optional forced tool call (used for the truncation test).
+- `README.md` — method, run commands, recorded results, caveats.
+
+Run (from the repo root):
+```bash
+AB_UPSTREAM_CLI="C:\Users\emper\AppData\Local\Temp\opencode\ocab\upstream\packages\opencode\src\index.ts" \
+  bun run script/token-ab/run.ts
+python script/token-ab/analyze.py
+```
+
+### First-request context (same 10 tools, msg "run the command")
+| part | upstream | fork | delta |
+|---|---:|---:|---:|
+| raw request body | 9,335 | 6,372 | **−2,963** |
+| messages JSON | 3,951 | 2,208 | −1,743 |
+| system prompt | 3,612 | 2,033 | **−1,579** |
+| tool definitions | 5,343 | 4,123 | **−1,220** |
+
+Per-tool: `bash` 1,478→811 (−667), `task` 881→668 (−213), `todowrite`
+698→496 (−202), `webfetch` 338→200 (−138); the other six are unchanged.
+
+### Oversized tool result (forced ~1.2 MB bash output)
+| measure | upstream | fork | delta |
+|---|---:|---:|---:|
+| tool result in context | 51,347 chars / 7,609 tok | 16,512 chars / 2,473 tok | **−5,136** |
+| full follow-up request | 17,042 | 8,943 | **−8,099** |
+
+### Honest caveats
+- These are **input-token** reductions, not dollars. Billing depends on cache
+  reads/writes and output tokens; shortening a stable prefix can help, but
+  truncating cached history invalidates reuse from that point on.
+- The system/tool deltas assume the same model; model-specific prompt selection
+  was removed in this fork, so on some providers the delta differs.
+- RTK/DCP are external; their benefit is only realized when their output fits
+  under the 16 KiB cap (the cap, not RTK, determines the truncation example above).
+
