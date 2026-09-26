@@ -271,3 +271,21 @@ Per-tool: `bash` 1,478→811 (−667), `task` 881→668 (−213), `todowrite`
 - RTK/DCP are external; their benefit is only realized when their output fits
   under the 16 KiB cap (the cap, not RTK, determines the truncation example above).
 
+## Published (2026-09-25)
+
+The fixes and this evidence were pushed to `origin/dev`
+(`https://github.com/emperorofrome13/opencode-dollar-code-edition.git`) as four
+focused commits, rebased onto the remote's newer `8c89eaf6cd`:
+
+- `e08ccdea43` fix: commit `.opencode` plugin manifest + lockfile and make launcher install them
+- `2b1fbc4797` fix: convert `custom-elements.d.ts` from broken symlink to a regular file
+- `548334a649` docs: replace unsubstantiated savings claims with live-measured A/B evidence
+- `817950fae1` test: add reproducible token A/B harness (`script/token-ab`)
+
+Verified after push: `origin/dev` tree has `custom-elements.d.ts` mode `100644`
+(same blob), `script/token-ab/{mock-llm.ts,run.ts,analyze.py,tool.json,README.md}`
+tracked, and `benchmark_results.json` intentionally left untracked.
+
+Note: a redundant `.git`-less tree at `E:\aiprojects\coders\other\opencodellarcode`
+(127.9 MB, from an earlier typo) still exists and can be deleted.
+
